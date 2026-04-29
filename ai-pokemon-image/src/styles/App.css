@@ -1,0 +1,283 @@
+#root {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  background: transparent;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: min(100%, 720px);
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 24px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.select-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.select-button:hover {
+  background-color: #535bf2;
+}
+
+.image-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+  max-width: 100%;
+}
+
+/* Wraps only the photo; legend sits below so it cannot stretch the overlay */
+.image-stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.selected-image {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  object-fit: contain;
+  display: block;
+}
+
+/* Exactly covers the painted bitmap (not letterbox bars outside the image) */
+.image-content-overlay {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.pokemon-overlay {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.mask-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Normal blend so overlay hues stay distinct (multiply muddies cyan/magenta/yellow) */
+  mix-blend-mode: normal;
+}
+
+.mask-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 8px;
+}
+
+.mask-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mask-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.mask-legend-text {
+  white-space: nowrap;
+  color: #fff;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.back-button,
+.generate-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.back-button {
+  background-color: #888;
+  color: white;
+}
+
+.back-button:hover {
+  background-color: #666;
+}
+
+.generate-button {
+  background-color: #646cff;
+  color: white;
+}
+
+.generate-button:hover:not(:disabled) {
+  background-color: #535bf2;
+}
+
+.generate-button:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.processing-message {
+  padding: 1rem;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  color: #333;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.controls {
+  width: 100%;
+  max-width: 500px;
+  margin-top: 1rem;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.slider-container label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.threshold-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #ddd;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.threshold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #646cff;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.threshold-slider::-webkit-slider-thumb:hover {
+  background: #535bf2;
+}
+
+.threshold-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #646cff;
+  cursor: pointer;
+  border: none;
+  transition: background 0.3s;
+}
+
+.threshold-slider::-moz-range-thumb:hover {
+  background: #535bf2;
+}
+
+.threshold-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slider-hint {
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
+}
