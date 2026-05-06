@@ -15,6 +15,7 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 import os
+import threading
 import torch
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 
@@ -25,6 +26,8 @@ CORS(app)
 segmentation_model = None
 processor = None
 device = None
+model_loaded = False
+_model_load_lock = threading.Lock()
 
 # ADE20K label mappings for our categories
 # ADE20K has 150 classes - grass (9) is separate from other ground surfaces
@@ -39,7 +42,7 @@ LABEL_MAPPING = {
 
 def load_segmentation_model():
     """Load Mask2Former model trained on ADE20K"""
-    global segmentation_model, processor, device
+    global segmentation_model, processor, device, model_loaded
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -55,18 +58,32 @@ def load_segmentation_model():
         print(f"✓ Mask2Former model loaded on {device}")
         print(f"✓ ADE20K dataset with 150 semantic classes")
         print(f"✓ Supports: sky, ground, water, person, and 146 other classes")
+        model_loaded = True
         return True
     except Exception as e:
         print(f"✗ Error loading model: {e}")
         import traceback
         traceback.print_exc()
+        model_loaded = False
         return False
 
 
-# Load model on startup
-model_loaded = load_segmentation_model()
-if not model_loaded:
-    print("⚠ Model failed to load - server will return errors")
+def ensure_model_loaded():
+    """
+    Render (and similar hosts) expect the web server to bind a port quickly.
+    Loading Mask2Former can take a long time (model download + init), so we load
+    lazily on first request that needs it.
+    """
+    global model_loaded
+    if model_loaded and segmentation_model is not None and processor is not None:
+        return
+
+    with _model_load_lock:
+        if model_loaded and segmentation_model is not None and processor is not None:
+            return
+        ok = load_segmentation_model()
+        if not ok:
+            raise Exception("Model failed to load (see server logs)")
 
 
 def map_labels_to_categories(semantic_map):
@@ -108,8 +125,7 @@ def map_labels_to_categories(semantic_map):
 
 def segment_image(image):
     """Segment image using Mask2Former"""
-    if segmentation_model is None:
-        raise Exception("Model not loaded")
+    ensure_model_loaded()
 
     try:
         # Preprocess image
@@ -289,10 +305,11 @@ def remove_background():
 def health():
     """Health check endpoint"""
     return jsonify({
-        'status': 'ok' if model_loaded else 'error',
+        'status': 'ok' if model_loaded else 'starting',
         'service': 'semantic-segmentation',
         'model': 'Mask2Former ADE20K',
         'device': device if device else 'unknown',
+        'model_loaded': bool(model_loaded),
         'categories': ['person', 'sky', 'grass', 'ground', 'water', 'other']
     })
 
