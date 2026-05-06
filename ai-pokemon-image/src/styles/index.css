@@ -31,17 +31,6 @@ body {
   background-image:
     /* Soft highlight on upper dome */
     radial-gradient(ellipse 90% 70% at 50% 5%, rgba(255, 255, 255, 0.2), transparent 55%),
-    /* Center button (white inner, dark ring, outer rim) */
-    radial-gradient(
-      circle at 50% 50%,
-      #f5f5f5 0,
-      #f5f5f5 5.5vmin,
-      #1a1a1a 5.5vmin,
-      #1a1a1a 6.6vmin,
-      #efefef 6.6vmin,
-      #cfcfcf 7.4vmin,
-      transparent 7.5vmin
-    ),
     /* Classic halves + belt */
     linear-gradient(
       180deg,
