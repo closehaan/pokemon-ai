@@ -142,6 +142,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  display: block;
   pointer-events: none;
   /* Normal blend so overlay hues stay distinct (multiply muddies cyan/magenta/yellow) */
   mix-blend-mode: normal;

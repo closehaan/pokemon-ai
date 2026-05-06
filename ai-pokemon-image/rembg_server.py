@@ -12,7 +12,7 @@ Usage:
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 import os
 import threading
@@ -175,6 +175,17 @@ def create_visualization(person_mask, sky_mask, grass_mask, ground_mask, water_m
     return Image.fromarray(result)
 
 
+def load_rgb_image_from_upload(file_storage):
+    """
+    Decode upload and apply EXIF orientation so pixel layout matches what phone
+    cameras store (JPEG often sideways with Orientation tag).
+    """
+    file_storage.stream.seek(0)
+    img = Image.open(file_storage.stream)
+    img = ImageOps.exif_transpose(img)
+    return img.convert('RGB')
+
+
 def calculate_percentages(person_mask, sky_mask, grass_mask, ground_mask, water_mask, other_mask):
     """Calculate percentage of each category in the image"""
     total_pixels = person_mask.size
@@ -207,8 +218,7 @@ def segment():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Load image
-        input_image = Image.open(file.stream).convert('RGB')
+        input_image = load_rgb_image_from_upload(file)
 
         # Segment
         person_mask, sky_mask, grass_mask, ground_mask, water_mask, other_mask = segment_image(
@@ -241,8 +251,7 @@ def analyze():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Load image
-        input_image = Image.open(file.stream).convert('RGB')
+        input_image = load_rgb_image_from_upload(file)
 
         # Segment
         person_mask, sky_mask, grass_mask, ground_mask, water_mask, other_mask = segment_image(
@@ -274,8 +283,7 @@ def remove_background():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Load image
-        input_image = Image.open(file.stream).convert('RGB')
+        input_image = load_rgb_image_from_upload(file)
 
         # Segment
         person_mask, sky_mask, grass_mask, ground_mask, water_mask, other_mask = segment_image(

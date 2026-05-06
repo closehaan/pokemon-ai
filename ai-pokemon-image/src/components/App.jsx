@@ -32,20 +32,27 @@ function matchServerVisualizationColor(r, g, b) {
 
 /**
  * Pixel rect where the image is actually painted for `object-fit: contain`
- * (coordinates relative to the img element's top-left).
+ * (coordinates relative to the img element's top-left border edge).
+ *
+ * Uses getBoundingClientRect() so layout matches what is actually painted (subpixel
+ * sizing on mobile). Rounds drawW/drawH so the mask canvas backing store matches the
+ * overlay CSS size exactly (avoids stretched / misaligned overlays).
  */
 function getImageObjectFitContainRect(img) {
   const nw = img.naturalWidth
   const nh = img.naturalHeight
   if (!nw || !nh) return null
-  const w = img.clientWidth
-  const h = img.clientHeight
+  const rect = img.getBoundingClientRect()
+  const w = rect.width
+  const h = rect.height
   if (!w || !h) return null
   const scale = Math.min(w / nw, h / nh)
-  const drawW = nw * scale
-  const drawH = nh * scale
-  const offX = (w - drawW) / 2
-  const offY = (h - drawH) / 2
+  let drawW = nw * scale
+  let drawH = nh * scale
+  drawW = Math.max(1, Math.round(drawW))
+  drawH = Math.max(1, Math.round(drawH))
+  const offX = Math.round((w - drawW) / 2)
+  const offY = Math.round((h - drawH) / 2)
   return { offX, offY, drawW, drawH, stageW: w, stageH: h, nw, nh }
 }
 
@@ -66,6 +73,51 @@ function pokemonMatchesBackgroundCategory(apiTypes, bgCategory) {
   const allowed = TYPES_FOR_BACKGROUND[bgCategory]
   if (!allowed) return true
   return apiTypes.some((t) => allowed.has(t.type.name))
+}
+
+/**
+ * Re-encode as PNG using the browser's decoded bitmap (includes EXIF orientation).
+ * Phone camera JPEGs often store pixels rotated with an Orientation tag; the server
+ * may segment raw storage layout while CSS shows the upright image — this fixes both.
+ */
+async function normalizeImageFileForSegmentation(file) {
+  const src = URL.createObjectURL(file)
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error('Image failed to load'))
+      el.src = src
+    })
+    const w = img.naturalWidth
+    const h = img.naturalHeight
+    if (!w || !h) throw new Error('Invalid image dimensions')
+
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas not available')
+
+    ctx.drawImage(img, 0, 0)
+
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Could not encode image'))),
+        'image/png'
+      )
+    })
+
+    const stem = file.name.replace(/\.[^/.]+$/, '') || 'image'
+    const outFile = new File([blob], `${stem}.png`, { type: 'image/png' })
+    const displayUrl = URL.createObjectURL(blob)
+    return { displayUrl, file: outFile }
+  } catch (e) {
+    console.warn('Canvas normalize failed, using original file:', e)
+    return { displayUrl: URL.createObjectURL(file), file }
+  } finally {
+    URL.revokeObjectURL(src)
+  }
 }
 
 function classifyFallbackPixel(r, g, b, backgroundThreshold, recalcVariant) {
@@ -164,10 +216,12 @@ function App() {
     updateImageLayout()
     const img = imageRef.current
     if (!img) return
-    const ro = new ResizeObserver(() => updateImageLayout())
+    const ro = new ResizeObserver(() => {
+      requestAnimationFrame(() => updateImageLayout())
+    })
     ro.observe(img)
     const vv = window.visualViewport
-    const onVv = () => updateImageLayout()
+    const onVv = () => requestAnimationFrame(() => updateImageLayout())
     vv?.addEventListener('resize', onVv)
     vv?.addEventListener('scroll', onVv)
     window.addEventListener('orientationchange', onVv)
@@ -179,24 +233,29 @@ function App() {
     }
   }, [baseImage, updateImageLayout])
 
-  const handleImageSelect = (event) => {
-    const file = event.target.files[0]
-    if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setBaseImage(imageUrl)
-      setBaseImageFile(file)
-      // Clear Pokemon overlay when new image is selected
-      setPokemonList([])
-      setBackgroundMask(null)
-      setSubjectMask(null)
-      setSkyMask(null)
-      setWaterMask(null)
-      setGrassMask(null)
-      setGroundMask(null)
-      setOtherMask(null)
-      // Process background after image loads
-      setIsProcessingBackground(true)
-    }
+  const handleImageSelect = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const { displayUrl, file: outFile } =
+      await normalizeImageFileForSegmentation(file)
+
+    setPokemonList([])
+    setBackgroundMask(null)
+    setSubjectMask(null)
+    setSkyMask(null)
+    setWaterMask(null)
+    setGrassMask(null)
+    setGroundMask(null)
+    setOtherMask(null)
+    setOriginalImageData(null)
+
+    setBaseImage((prev) => {
+      if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+      return displayUrl
+    })
+    setBaseImageFile(outFile)
+    setIsProcessingBackground(true)
   }
 
   useEffect(() => {
@@ -253,8 +312,8 @@ function App() {
         })
 
         const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
         const ctx = canvas.getContext('2d')
         
         if (!ctx) {
@@ -868,7 +927,9 @@ function App() {
                   src={baseImage}
                   alt="Selected"
                   className="selected-image"
-                  onLoad={updateImageLayout}
+                  onLoad={() =>
+                    requestAnimationFrame(() => updateImageLayout())
+                  }
                 />
                 {imageLayout && (
                   <div
