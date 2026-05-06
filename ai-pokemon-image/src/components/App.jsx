@@ -166,7 +166,17 @@ function App() {
     if (!img) return
     const ro = new ResizeObserver(() => updateImageLayout())
     ro.observe(img)
-    return () => ro.disconnect()
+    const vv = window.visualViewport
+    const onVv = () => updateImageLayout()
+    vv?.addEventListener('resize', onVv)
+    vv?.addEventListener('scroll', onVv)
+    window.addEventListener('orientationchange', onVv)
+    return () => {
+      ro.disconnect()
+      vv?.removeEventListener('resize', onVv)
+      vv?.removeEventListener('scroll', onVv)
+      window.removeEventListener('orientationchange', onVv)
+    }
   }, [baseImage, updateImageLayout])
 
   const handleImageSelect = (event) => {
@@ -849,6 +859,9 @@ function App() {
                 className="image-stage"
                 onMouseEnter={() => setShowMaskOverlay(true)}
                 onMouseLeave={() => setShowMaskOverlay(false)}
+                onTouchStart={() => setShowMaskOverlay(true)}
+                onTouchEnd={() => setShowMaskOverlay(false)}
+                onTouchCancel={() => setShowMaskOverlay(false)}
               >
                 <img
                   ref={imageRef}
@@ -871,38 +884,50 @@ function App() {
                       <canvas ref={maskCanvasRef} className="mask-overlay" />
                     )}
                     {pokemonList.map((pokemon, index) => (
-                      <img
-                        key={index}
-                        src={pokemon.imageUrl}
-                        alt={`Pokemon ${index + 1}`}
-                        className="pokemon-overlay"
+                      <div
+                        key={`${pokemon.imageUrl}-${index}`}
+                        className="pokemon-slot"
                         style={{
-                          transform: `scale(${pokemon.scale})`,
                           left: pokemon.left,
                           top: pokemon.top,
+                          width: `${pokemon.scale * 100}%`,
+                          height: `${pokemon.scale * 100}%`,
                         }}
-                      />
+                      >
+                        <img
+                          src={pokemon.imageUrl}
+                          alt=""
+                          className="pokemon-overlay-img"
+                          draggable={false}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
               {backgroundMask && (
-                <div
-                  className="mask-legend"
-                  role="group"
-                  aria-label="Segmentation overlay colors"
-                >
-                  {Object.values(MASK_OVERLAY).map((entry) => (
-                    <span key={entry.label} className="mask-legend-item">
-                      <span
-                        className="mask-legend-swatch"
-                        style={{ backgroundColor: entry.css }}
-                        aria-hidden
-                      />
-                      <span className="mask-legend-text">{entry.label}</span>
-                    </span>
-                  ))}
-                </div>
+                <>
+                  <div
+                    className="mask-legend"
+                    role="group"
+                    aria-label="Segmentation overlay colors"
+                  >
+                    {Object.values(MASK_OVERLAY).map((entry) => (
+                      <span key={entry.label} className="mask-legend-item">
+                        <span
+                          className="mask-legend-swatch"
+                          style={{ backgroundColor: entry.css }}
+                          aria-hidden
+                        />
+                        <span className="mask-legend-text">{entry.label}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mask-preview-hint">
+                    Hover the photo (desktop) or touch and hold (mobile) to preview the
+                    segmentation overlay.
+                  </p>
+                </>
               )}
             </div>
             <div className="controls">
